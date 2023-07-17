@@ -1,0 +1,17 @@
+
+- quota_name: basic
+  types_of_cofee:
+    capucinno:
+      time: 24h
+      limit: 2
+    americano:
+      time: 30m
+      limit: 3
+- quota_name: advance
+  types_of_cofee:
+    capucinno:
+      time: 24h
+      limit: 2
+    americano:
+      time: 30m
+      limit: 3
