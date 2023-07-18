@@ -10,15 +10,15 @@ import (
 )
 
 func init() {
-	if err := config.ParseQuotaConfig("config/cofee_shop_quotas.yaml"); err != nil {
+	if err := config.ParseQuotaConfig("config/cofee_shop_quotas.yal"); err != nil {
 		fmt.Println(err)
 	}
 }
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/buycoffee", handlers.RequestValidation(handlers.BuyCofee)).Methods("GET")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	router := mux.NewRouter()
+	router.HandleFunc("/buycoffee", handlers.RequestValidation(handlers.BuyCofee))
+	if err := http.ListenAndServe(":8080", router); err != nil {
 		fmt.Printf("server is down because: %s", err.Error())
 	}
 }
