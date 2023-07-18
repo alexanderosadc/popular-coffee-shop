@@ -15,7 +15,7 @@ func init() {
 }
 
 func main() {
-	http.HandleFunc("/buycoffee", handlers.BuyCofee)
+	http.HandleFunc("/buycoffee", handlers.RequestValidation(handlers.BuyCofee))
 	if err := http.ListenAndServe(port, nil); err != nil {
 		fmt.Println("server is down because:" + err.Error())
 	}
