@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	if err := config.ParseQuotaConfig("config/cofee_shop_quotas.yal"); err != nil {
+	if err := config.ParseQuotaConfig("config/cofee_shop_quotas.yaml"); err != nil {
 		fmt.Println(err)
 	}
 }

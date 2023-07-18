@@ -3,15 +3,32 @@ basic:
   types_of_cofee:
     capucinno:
       time: 24h
-      limit: 2
-    americano:
-      time: 30m
-      limit: 3
-advance:
-  types_of_cofee:
-    capucinno:
+      limit: 1
+    espresso:
       time: 24h
       limit: 2
     americano:
-      time: 30m
+      time: 24h
       limit: 3
+cofeelover:
+  types_of_cofee:
+    capucinno:
+      time: 24h
+      limit: 5
+    espresso:
+      time: 24h
+      limit: 5
+    americano:
+      time: 24h
+      limit: 5
+americano_maniac:
+  types_of_cofee:
+    capucinno:
+      time: 24h
+      limit: 1
+    espresso:
+      time: 24h
+      limit: 2
+    americano:
+      time: 1h
+      limit: 5
