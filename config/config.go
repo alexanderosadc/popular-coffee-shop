@@ -12,7 +12,6 @@ type CofeeLimit struct {
 }
 
 type Quota struct {
-	QuotaName    string                `yaml:"quota_name"`
 	TypesOfCofee map[string]CofeeLimit `yaml:"types_of_cofee"`
 }
 
@@ -28,5 +27,6 @@ func ParseQuotaConfig(path string) error {
 	if err := yaml.Unmarshal(dat, &Conf); err != nil {
 		return err
 	}
+
 	return nil
 }
