@@ -6,17 +6,19 @@ import (
 
 	"github.com/alexanderosadc/popular-coffee-shop/config"
 	"github.com/alexanderosadc/popular-coffee-shop/pkg/handlers"
+	"github.com/gorilla/mux"
 )
 
-var port string = ":8080"
-
 func init() {
-	config.ParseQuotaConfig("config/cofee_shop_quotas.yaml")
+	if err := config.ParseQuotaConfig("config/cofee_shop_quotas.yaml"); err != nil {
+		fmt.Println(err)
+	}
 }
 
 func main() {
-	http.HandleFunc("/buycoffee", handlers.RequestValidation(handlers.BuyCofee))
-	if err := http.ListenAndServe(port, nil); err != nil {
-		fmt.Println("server is down because:" + err.Error())
+	r := mux.NewRouter()
+	r.HandleFunc("/buycoffee", handlers.RequestValidation(handlers.BuyCofee)).Methods("GET")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		fmt.Printf("server is down because: %s", err.Error())
 	}
 }

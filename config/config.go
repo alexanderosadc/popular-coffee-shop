@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -19,15 +18,15 @@ type Quota struct {
 
 var Conf []Quota
 
-func ParseQuotaConfig(path string) {
+func ParseQuotaConfig(path string) error {
 	dat, err := os.ReadFile(path)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
 	if err := yaml.Unmarshal(dat, &Conf); err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
+
+	return nil
 }
