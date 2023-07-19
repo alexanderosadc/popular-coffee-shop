@@ -1,34 +1,33 @@
-
 basic:
-  types_of_cofee:
-    capucinno:
-      time: 24h
-      limit: 1
-    espresso:
-      time: 24h
-      limit: 2
-    americano:
-      time: 24h
-      limit: 3
+  cofee_types:
+      - name: capucinno
+        time: 24h
+        limit: 1
+      - name: espresso
+        time: 24h
+        limit: 2
+      - name: americano
+        time: 24h
+        limit: 3
 cofeelover:
-  types_of_cofee:
-    capucinno:
+  cofee_types:
+    - name: capucinno
       time: 24h
       limit: 5
-    espresso:
+    - name: espresso
       time: 24h
       limit: 5
-    americano:
+    - name: americano
       time: 24h
       limit: 5
 americano_maniac:
-  types_of_cofee:
-    capucinno:
-      time: 24h
-      limit: 1
-    espresso:
-      time: 24h
-      limit: 2
-    americano:
-      time: 1h
-      limit: 5
+  cofee_types:
+      - name: capucinno
+        time: 24h
+        limit: 1
+      - name: espresso
+        time: 24h
+        limit: 2
+      - name: americano
+        time: 1h
+        limit: 5
