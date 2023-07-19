@@ -1,5 +1,6 @@
 package domain
 
 type User struct {
-	Membership MembershipType
+	Membership      string
+	PurchaseHistory []Purchase
 }
