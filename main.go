@@ -31,11 +31,11 @@ func main() {
 	if err := sqlDB.ConnectToDB(host, port, user, password, dbname); err != nil {
 		panic(err)
 	}
-	defer sqlDB.CloseConnection()
 
 	cofeeHandlers := handlers.CofeeHandlers{Repo: &sqlDB}
 	router.HandleFunc("/buycoffee", handlers.RequestValidation(cofeeHandlers.BuyCofee))
-	fmt.Printf("server starts on %s", serverPort)
+	fmt.Printf("server starts on localhost%s\n", serverPort)
+
 	if err := http.ListenAndServe(serverPort, router); err != nil {
 		fmt.Printf("server is down because: %s", err.Error())
 	}

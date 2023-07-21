@@ -1,8 +1,14 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Purchase struct {
+	gorm.Model
+	UserID    uint
 	CofeeType string
 	Time      time.Time
 }

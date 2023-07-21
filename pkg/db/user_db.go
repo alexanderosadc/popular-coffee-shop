@@ -1,27 +1,26 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
-	"database/sql"
-
 	"github.com/alexanderosadc/popular-coffee-shop/pkg/domain"
 	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type Repository interface {
 	ConnectToDB(host, port, user, password, dbname string) error
-	CreateOrUpdateUser(userID, membershipType string) error
-	GetUserCofee(userID, requestedCofeeType string) (int, error)
-	GetUser(userID string) (*domain.User, error)
-	CloseConnection()
+	Create(user *domain.User) error
+	ReadByID(ID string) (*domain.User, error)
+	Update(user *domain.User) error
+	Delete(ID string) error
 }
 
 type SqlRepo struct {
 	mu           sync.RWMutex
-	db           *sql.DB
+	db           gorm.DB
 	cofeeClients map[string]domain.User
 }
 
@@ -29,56 +28,40 @@ func (r *SqlRepo) ConnectToDB(host, port, user, password, dbname string) error {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s sslmode=disable",
 		host, port, user, password)
-	db, err := sql.Open("postgres", psqlInfo)
+	db, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{})
 	if err != nil {
 		return err
 	}
+	fmt.Println("successfully connected to db")
+	r.db = *db
 
-	r.db = db
+	if err := db.AutoMigrate(&domain.User{}, &domain.CofeeType{}); err != nil {
+		return err
+	}
 
-	fmt.Println("successfully connected to postgress")
+	fmt.Println("successfully migration of tables")
 	return nil
 }
 
-func (r *SqlRepo) CreateOrUpdateUser(userID string, membershipType string) error {
-	user, _ := r.GetUser(userID)
-	if user == nil {
-		r.createUser(userID, membershipType)
-		return nil
+func (r *SqlRepo) Create(user *domain.User) error {
+	return r.db.Create(user).Error
+}
+
+// ReadByID retrieves a User from the database based on the given ID
+func (r *SqlRepo) ReadByID(ID string) (*domain.User, error) {
+	var user domain.User
+	if err := r.db.Where("id = ?", ID).Preload("PurchaseHistory").First(&user).Error; err != nil {
+		return nil, err
 	}
-	r.mu.Lock()
-	user.Membership = membershipType
-	r.mu.Lock()
-
-	return nil
+	return &user, nil
 }
 
-func (r *SqlRepo) GetUserCofee(userID string, requestedCofeeType string) (int, error) {
-	return 0, nil
+// Update updates an existing User in the database
+func (r *SqlRepo) Update(user *domain.User) error {
+	return r.db.Save(user).Error
 }
 
-func (r *SqlRepo) GetUser(userID string) (*domain.User, error) {
-	r.mu.RLock()
-	user, ok := r.cofeeClients[userID]
-	r.mu.RUnlock()
-	if ok {
-		return &user, nil
-	}
-
-	return nil, errors.New("there is no such user in DB")
-}
-
-func (r *SqlRepo) createUser(userID string, membershipType string) {
-	r.mu.Lock()
-	user := domain.User{Membership: membershipType}
-	r.cofeeClients[userID] = user
-	r.mu.Unlock()
-}
-
-func (r *SqlRepo) CloseConnection() {
-	if err := r.db.Close(); err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Println("connection closed")
+// Delete deletes a User from the database based on the given ID
+func (r *SqlRepo) Delete(Id string) error {
+	return r.db.Where("id = ?", Id).Delete(&domain.User{}).Error
 }

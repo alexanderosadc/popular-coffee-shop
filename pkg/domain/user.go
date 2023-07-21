@@ -1,6 +1,10 @@
 package domain
 
+import "gorm.io/gorm"
+
 type User struct {
+	gorm.Model
+	ID              string
 	Membership      string
-	PurchaseHistory []Purchase
+	PurchaseHistory []Purchase `gorm:"foreignKey:UserID"`
 }
