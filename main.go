@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/alexanderosadc/popular-coffee-shop/config"
+	"github.com/alexanderosadc/popular-coffee-shop/pkg/app"
 	"github.com/alexanderosadc/popular-coffee-shop/pkg/db"
 	"github.com/alexanderosadc/popular-coffee-shop/pkg/handlers"
 	"github.com/gorilla/mux"
@@ -32,8 +33,12 @@ func main() {
 		panic(err)
 	}
 
-	cofeeHandlers := handlers.CofeeHandlers{Repo: &sqlDB}
-	router.HandleFunc("/buycoffee", handlers.RequestValidation(cofeeHandlers.BuyCofee))
+	businessLogic := app.CofeeBL{Repo: &sqlDB}
+
+	router.HandleFunc("/buycoffee", handlers.RequestValidation(
+		func(w http.ResponseWriter, r *http.Request) {
+			handlers.BuyCofee(w, r, &businessLogic)
+		}))
 	fmt.Printf("server starts on localhost%s\n", serverPort)
 
 	if err := http.ListenAndServe(serverPort, router); err != nil {
