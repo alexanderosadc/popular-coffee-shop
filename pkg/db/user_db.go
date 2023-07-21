@@ -13,9 +13,10 @@ import (
 type Repository interface {
 	ConnectToDB(host, port, user, password, dbname string) error
 	Create(user *domain.User) error
-	ReadByID(ID string) (*domain.User, error)
+	GetByID(id string) (*domain.User, error)
 	Update(user *domain.User) error
-	Delete(ID string) error
+	Delete(id string) error
+	GetPurchasesByUserID(userID string) ([]domain.Purchase, error)
 }
 
 type SqlRepo struct {
@@ -35,7 +36,7 @@ func (r *SqlRepo) ConnectToDB(host, port, user, password, dbname string) error {
 	fmt.Println("successfully connected to db")
 	r.db = *db
 
-	if err := db.AutoMigrate(&domain.User{}, &domain.CofeeType{}); err != nil {
+	if err := db.AutoMigrate(&domain.User{}, &domain.Purchase{}); err != nil {
 		return err
 	}
 
@@ -47,10 +48,11 @@ func (r *SqlRepo) Create(user *domain.User) error {
 	return r.db.Create(user).Error
 }
 
-// ReadByID retrieves a User from the database based on the given ID
-func (r *SqlRepo) ReadByID(ID string) (*domain.User, error) {
+// GetByID retrieves a User from the database based on the given ID
+func (r *SqlRepo) GetByID(id string) (*domain.User, error) {
 	var user domain.User
-	if err := r.db.Where("id = ?", ID).Preload("PurchaseHistory").First(&user).Error; err != nil {
+
+	if err := r.db.Preload("PurchaseHistory").First(&user, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -62,6 +64,17 @@ func (r *SqlRepo) Update(user *domain.User) error {
 }
 
 // Delete deletes a User from the database based on the given ID
-func (r *SqlRepo) Delete(Id string) error {
-	return r.db.Where("id = ?", Id).Delete(&domain.User{}).Error
+func (r *SqlRepo) Delete(id string) error {
+	return r.db.Where("id = ?", id).Delete(&domain.User{}).Error
+}
+
+// GetPurchasesByUserID retrieves all purchases for a user based on the given UserID
+// and returns them in descending order by the field Time.
+func (r *SqlRepo) GetPurchasesByUserID(userID string) ([]domain.Purchase, error) {
+	var purchases []domain.Purchase
+	err := r.db.Where("user_id = ?", userID).Order("time DESC").Find(&purchases).Error
+	if err != nil {
+		return nil, err
+	}
+	return purchases, nil
 }
