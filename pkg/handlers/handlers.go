@@ -7,7 +7,8 @@ import (
 )
 
 func BuyCofee(w http.ResponseWriter, r *http.Request, bl *app.CofeeBL) {
-	membership, err := bl.GetMembershipType(r.Header.Get("membership-type"))
+	userMembership := r.Header.Get("membership-type")
+	membership, err := bl.GetMembershipType(userMembership)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
@@ -17,7 +18,7 @@ func BuyCofee(w http.ResponseWriter, r *http.Request, bl *app.CofeeBL) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	if err := bl.GetCofee(r.Header.Get("user-id"), cofeeType, membership); err != nil {
-		//http.Error(w, err.Error(), http.StatusTooManyRequests)
+	if err := bl.ProcessCofeeReq(r.Header.Get("user-id"), cofeeType, userMembership, membership.TypesOfCofee); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
