@@ -38,7 +38,7 @@ func (bl *CofeeBL) ValidateCofeeType(cofeeType string, membership *domain.Member
 
 // ProcessCofeeReq is method for
 func (bl *CofeeBL) ProcessCofeeReq(userID, cofeeType, membership string, membershipCofees []domain.CofeeType) error {
-	_, err := bl.getUser(userID, membership)
+	user, err := bl.getUser(userID, membership)
 	if err != nil {
 		return err
 	}
@@ -54,17 +54,24 @@ func (bl *CofeeBL) ProcessCofeeReq(userID, cofeeType, membership string, members
 	}
 
 	if eligible {
-		
+		purchase := domain.Purchase{
+			UserID:    userID,
+			CofeeType: cofeeType,
+			Time:      time.Now(),
+		}
+
+		user.PurchaseHistory = append(user.PurchaseHistory, purchase)
 	}
 
-	return nil
+	err = bl.Repo.Update(user)
+
+	return err
 }
 
 // getUser method is responsible for finding or creating user in DB. User is returned.
 func (bl *CofeeBL) getUser(userID, membership string) (*domain.User, error) {
 	user, err := bl.Repo.GetByID(userID)
-
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
@@ -84,7 +91,7 @@ func (bl *CofeeBL) getUser(userID, membership string) (*domain.User, error) {
 
 // isUserEligible method is responsible for checking if user eligible for new cofee.
 func (bl *CofeeBL) isUserEligible(id string, selectedCofeeType *domain.CofeeType) (bool, error) {
-	purchasehistory, err := bl.Repo.GetPurchasesByUserID(id)
+	purchasehistory, err := bl.Repo.GetPurchasesByUserID(id, selectedCofeeType.CofeeName)
 	if err != nil {
 		return false, err
 	}
@@ -93,8 +100,12 @@ func (bl *CofeeBL) isUserEligible(id string, selectedCofeeType *domain.CofeeType
 		return true, nil
 	}
 
-	nrOfAvialiablePurchase := 0
-	for i := 0; i < selectedCofeeType.Limit; i++ {
+	nrOfAvialiablePurchase := selectedCofeeType.Limit
+	for i := 0; i < len(purchasehistory); i++ {
+		if i >= selectedCofeeType.Limit {
+			break
+		}
+
 		timeOfPurchase := purchasehistory[i].Time
 
 		nextPurchaseTime, err := bl.calculateNextPurchaseTime(selectedCofeeType.TimeToRefresh, timeOfPurchase)
@@ -102,13 +113,13 @@ func (bl *CofeeBL) isUserEligible(id string, selectedCofeeType *domain.CofeeType
 			return false, err
 		}
 
-		if !time.Now().Before(*nextPurchaseTime) {
-			nrOfAvialiablePurchase++
+		if time.Now().Before(*nextPurchaseTime) {
+			nrOfAvialiablePurchase--
 		}
 	}
 
-	if nrOfAvialiablePurchase > selectedCofeeType.Limit {
-		return false, errors.New("422")
+	if nrOfAvialiablePurchase <= 0 {
+		return false, errors.New("429")
 	}
 
 	return true, nil

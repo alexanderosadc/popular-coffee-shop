@@ -22,3 +22,4 @@ go.work
 
 # Go lint setting file
 .golangci.yml
+.vscode/

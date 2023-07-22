@@ -16,7 +16,7 @@ type Repository interface {
 	GetByID(id string) (*domain.User, error)
 	Update(user *domain.User) error
 	Delete(id string) error
-	GetPurchasesByUserID(userID string) ([]domain.Purchase, error)
+	GetPurchasesByUserID(userID string, cofeeType string) ([]domain.Purchase, error)
 }
 
 type SqlRepo struct {
@@ -70,9 +70,9 @@ func (r *SqlRepo) Delete(id string) error {
 
 // GetPurchasesByUserID retrieves all purchases for a user based on the given UserID
 // and returns them in descending order by the field Time.
-func (r *SqlRepo) GetPurchasesByUserID(userID string) ([]domain.Purchase, error) {
+func (r *SqlRepo) GetPurchasesByUserID(userID string, cofeeType string) ([]domain.Purchase, error) {
 	var purchases []domain.Purchase
-	err := r.db.Where("user_id = ?", userID).Order("time DESC").Find(&purchases).Error
+	err := r.db.Where("user_id = ? AND cofee_type = ?", userID, cofeeType).Order("time DESC").Find(&purchases).Error
 	if err != nil {
 		return nil, err
 	}
