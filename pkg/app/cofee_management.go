@@ -2,7 +2,7 @@ package app
 
 import (
 	"errors"
-	"fmt"
+	"time"
 
 	"github.com/alexanderosadc/popular-coffee-shop/config"
 	"github.com/alexanderosadc/popular-coffee-shop/pkg/db"
@@ -43,9 +43,18 @@ func (bl *CofeeBL) ProcessCofeeReq(userID, cofeeType, membership string, members
 		return err
 	}
 
-	_, err = bl.checkQuota(userID, cofeeType, membershipCofees)
+	selectedCofeeType, err := bl.getSelectedCofeeType(cofeeType, membershipCofees)
 	if err != nil {
 		return err
+	}
+
+	eligible, err := bl.isUserEligible(userID, selectedCofeeType)
+	if err != nil {
+		return err
+	}
+
+	if eligible {
+		
 	}
 
 	return nil
@@ -73,11 +82,43 @@ func (bl *CofeeBL) getUser(userID, membership string) (*domain.User, error) {
 	return user, nil
 }
 
-// checkQuota method is responsible for checking if user eligible for new cofee
-func (bl *CofeeBL) checkQuota(userID, cofeeType string, membershipCofees []domain.CofeeType) (bool, error) {
+// isUserEligible method is responsible for checking if user eligible for new cofee.
+func (bl *CofeeBL) isUserEligible(id string, selectedCofeeType *domain.CofeeType) (bool, error) {
+	purchasehistory, err := bl.Repo.GetPurchasesByUserID(id)
+	if err != nil {
+		return false, err
+	}
+
+	if len(purchasehistory) == 0 {
+		return true, nil
+	}
+
+	nrOfAvialiablePurchase := 0
+	for i := 0; i < selectedCofeeType.Limit; i++ {
+		timeOfPurchase := purchasehistory[i].Time
+
+		nextPurchaseTime, err := bl.calculateNextPurchaseTime(selectedCofeeType.TimeToRefresh, timeOfPurchase)
+		if err != nil {
+			return false, err
+		}
+
+		if !time.Now().Before(*nextPurchaseTime) {
+			nrOfAvialiablePurchase++
+		}
+	}
+
+	if nrOfAvialiablePurchase > selectedCofeeType.Limit {
+		return false, errors.New("422")
+	}
+
+	return true, nil
+}
+
+// getSelectedCofeeType extracts cofee type object from config about based on cofeeType string
+func (bl *CofeeBL) getSelectedCofeeType(cofeeType string, cofeeQuotas []domain.CofeeType) (*domain.CofeeType, error) {
 	var selectedCofeeType *domain.CofeeType
 
-	for _, cofee := range membershipCofees {
+	for _, cofee := range cofeeQuotas {
 		if cofee.CofeeName == cofeeType {
 			selectedCofeeType = &cofee
 			break
@@ -85,14 +126,19 @@ func (bl *CofeeBL) checkQuota(userID, cofeeType string, membershipCofees []domai
 	}
 
 	if selectedCofeeType == nil {
-		return false, errors.New("this cofee type not found in collection")
+		return nil, errors.New("this cofee type not found in collection")
 	}
 
-	history, err := bl.Repo.GetPurchasesByUserID(userID)
+	return selectedCofeeType, nil
+}
+
+// calculateNextPurchaseTime adds to the time of purchase delay when next purchase is avialiable
+func (bl *CofeeBL) calculateNextPurchaseTime(timeToRefresh string, purchaseTime time.Time) (*time.Time, error) {
+	durationToRefresh, err := time.ParseDuration(timeToRefresh)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	fmt.Println(history)
-	return false, nil
+	nextPurchaseTime := purchaseTime.Add(durationToRefresh)
+	return &nextPurchaseTime, nil
 }
