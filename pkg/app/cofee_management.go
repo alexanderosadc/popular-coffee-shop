@@ -37,20 +37,20 @@ func (bl *CofeeBL) ValidateCofeeType(cofeeType string, membership *domain.Member
 }
 
 // ProcessCofeeReq is method for
-func (bl *CofeeBL) ProcessCofeeReq(userID, cofeeType, membership string, membershipCofees []domain.CofeeType) error {
+func (bl *CofeeBL) ProcessCofeeReq(userID, cofeeType, membership string, membershipCofees []domain.CofeeType) CustomError {
 	user, err := bl.getUser(userID, membership)
 	if err != nil {
-		return err
+		return CustomError{Err: err}
 	}
 
 	selectedCofeeType, err := bl.getSelectedCofeeType(cofeeType, membershipCofees)
 	if err != nil {
-		return err
+		return CustomError{Err: err}
 	}
 
-	eligible, err := bl.isUserEligible(userID, selectedCofeeType)
-	if err != nil {
-		return err
+	eligible, custErr := bl.isUserEligible(userID, selectedCofeeType)
+	if custErr.Err != nil {
+		return custErr
 	}
 
 	if eligible {
@@ -65,7 +65,7 @@ func (bl *CofeeBL) ProcessCofeeReq(userID, cofeeType, membership string, members
 
 	err = bl.Repo.Update(user)
 
-	return err
+	return CustomError{Err: err}
 }
 
 // getUser method is responsible for finding or creating user in DB. User is returned.
@@ -90,16 +90,17 @@ func (bl *CofeeBL) getUser(userID, membership string) (*domain.User, error) {
 }
 
 // isUserEligible method is responsible for checking if user eligible for new cofee.
-func (bl *CofeeBL) isUserEligible(id string, selectedCofeeType *domain.CofeeType) (bool, error) {
+func (bl *CofeeBL) isUserEligible(id string, selectedCofeeType *domain.CofeeType) (bool, CustomError) {
 	purchasehistory, err := bl.Repo.GetPurchasesByUserID(id, selectedCofeeType.CofeeName)
 	if err != nil {
-		return false, err
+		return false, CustomError{Err: err}
 	}
 
 	if len(purchasehistory) == 0 {
-		return true, nil
+		return true, CustomError{Err: err}
 	}
 
+	var timeToWait time.Duration
 	nrOfAvialiablePurchase := selectedCofeeType.Limit
 	for i := 0; i < len(purchasehistory); i++ {
 		if i >= selectedCofeeType.Limit {
@@ -110,19 +111,24 @@ func (bl *CofeeBL) isUserEligible(id string, selectedCofeeType *domain.CofeeType
 
 		nextPurchaseTime, err := bl.calculateNextPurchaseTime(selectedCofeeType.TimeToRefresh, timeOfPurchase)
 		if err != nil {
-			return false, err
+			return false, CustomError{Err: err}
 		}
 
 		if time.Now().Before(*nextPurchaseTime) {
 			nrOfAvialiablePurchase--
 		}
+
+		if i == 0 {
+			timeToWait = nextPurchaseTime.Sub(time.Now())
+		}
 	}
 
 	if nrOfAvialiablePurchase <= 0 {
-		return false, errors.New("429")
+		ErrTooManyReq.TimeToWait = timeToWait.Hours()
+		return false, ErrTooManyReq
 	}
 
-	return true, nil
+	return true, CustomError{Err: err}
 }
 
 // getSelectedCofeeType extracts cofee type object from config about based on cofeeType string

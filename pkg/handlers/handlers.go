@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/alexanderosadc/popular-coffee-shop/pkg/app"
 )
@@ -21,11 +22,13 @@ func BuyCofee(w http.ResponseWriter, r *http.Request, bl *app.CofeeBL) {
 		return
 	}
 
-	if err := bl.ProcessCofeeReq(r.Header.Get("user-id"), cofeeType, userMembership, membership.TypesOfCofee); err != nil {
-		if strings.Contains(err.Error(), "422") {
-			http.Error(w, err.Error(), http.StatusTooManyRequests)
+	if err := bl.ProcessCofeeReq(r.Header.Get("user-id"), cofeeType, userMembership, membership.TypesOfCofee); err.Err != nil {
+		if errors.Is(err.Err, app.ErrTooManyReq.Err) {
+			errMsg := fmt.Sprintf("Hours to wait: %.2f", err.TimeToWait)
+			http.Error(w, errMsg, err.StatusCode)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		http.Error(w, err.Err.Error(), http.StatusBadRequest)
 	}
 }
