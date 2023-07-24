@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/alexanderosadc/popular-coffee-shop/config"
@@ -12,6 +13,7 @@ import (
 
 type CofeeBL struct {
 	Repo db.Repository
+	rw   sync.RWMutex
 }
 
 // GetMembershipType compares existing membership types from config to membership introduced by user
@@ -91,44 +93,24 @@ func (bl *CofeeBL) getUser(userID, membership string) (*domain.User, error) {
 
 // isUserEligible method is responsible for checking if user eligible for new cofee.
 func (bl *CofeeBL) isUserEligible(id string, selectedCofeeType *domain.CofeeType) (bool, CustomError) {
-	purchasehistory, err := bl.Repo.GetPurchasesByUserID(id, selectedCofeeType.CofeeName)
+	durationToRefresh, err := time.ParseDuration(selectedCofeeType.TimeToRefresh)
 	if err != nil {
 		return false, CustomError{Err: err}
 	}
+	sqlDuration := int(durationToRefresh.Seconds())
 
-	if len(purchasehistory) == 0 {
+	purchaseHistory, err := bl.Repo.GetPurchasesByUserID(id, selectedCofeeType.CofeeName, sqlDuration)
+	if len(purchaseHistory) < selectedCofeeType.Limit {
 		return true, CustomError{Err: err}
 	}
 
-	var timeToWait time.Duration
-	nrOfAvialiablePurchase := selectedCofeeType.Limit
-	for i := 0; i < len(purchasehistory); i++ {
-		if i >= selectedCofeeType.Limit {
-			break
-		}
+	timeOfPurchase := purchaseHistory[0].Time
+	nextPurchaseTime := timeOfPurchase.Add(durationToRefresh)
 
-		timeOfPurchase := purchasehistory[i].Time
+	timeToWait := nextPurchaseTime.Sub(time.Now())
+	ErrTooManyReq.TimeToWait = timeToWait.Hours()
 
-		nextPurchaseTime, err := bl.calculateNextPurchaseTime(selectedCofeeType.TimeToRefresh, timeOfPurchase)
-		if err != nil {
-			return false, CustomError{Err: err}
-		}
-
-		if time.Now().Before(*nextPurchaseTime) {
-			nrOfAvialiablePurchase--
-		}
-
-		if i == 0 {
-			timeToWait = nextPurchaseTime.Sub(time.Now())
-		}
-	}
-
-	if nrOfAvialiablePurchase <= 0 {
-		ErrTooManyReq.TimeToWait = timeToWait.Hours()
-		return false, ErrTooManyReq
-	}
-
-	return true, CustomError{Err: err}
+	return false, ErrTooManyReq
 }
 
 // getSelectedCofeeType extracts cofee type object from config about based on cofeeType string
@@ -147,15 +129,4 @@ func (bl *CofeeBL) getSelectedCofeeType(cofeeType string, cofeeQuotas []domain.C
 	}
 
 	return selectedCofeeType, nil
-}
-
-// calculateNextPurchaseTime adds to the time of purchase delay when next purchase is avialiable
-func (bl *CofeeBL) calculateNextPurchaseTime(timeToRefresh string, purchaseTime time.Time) (*time.Time, error) {
-	durationToRefresh, err := time.ParseDuration(timeToRefresh)
-	if err != nil {
-		return nil, err
-	}
-
-	nextPurchaseTime := purchaseTime.Add(durationToRefresh)
-	return &nextPurchaseTime, nil
 }
